@@ -5,7 +5,7 @@
 
 中文：本仓库用于研究可复现的订单流决策规则。**Strategy Thesis 由 Context 决定；Trapped Trader Zone 是 Location，而不是一个独立 Setup。** 所有信号均为待验证假设，不代表已证明存在正期望。
 
-## CLC Decision Tree v1.0
+## CLC Decision Tree v1.1
 
 ```mermaid
 flowchart TD
@@ -14,43 +14,26 @@ flowchart TD
     B -->|Imbalance| D["Strategy Thesis:<br/>Trend Continuation"]
     B -->|Transition / Unclear| X["NO TRADE<br/>Reassess Context"]
 
-    C --> E{"2. Location"}
-    D --> F{"2. Location"}
+    C --> E["2. Location:<br/>LVN at VAH / VAL"]
+    D --> F["2. Location:<br/>Trapped Trader Zone<br/>(Revisit)"]
 
-    E --> E1["Balance Edge"]
-    E --> E2["VAH / VAL"]
-    E --> E3["LVN"]
-    E --> E4["PDH / PDL"]
+    E --> G{"At predefined zone?"}
+    F --> G
+    G -->|No| W["WAIT<br/>For location"]
+    G -->|Yes| H{"3. Confirmation"}
 
-    F --> F1["Trapped Trader Zone<br/>Revisit of prior trapped entries"]
-    F --> F2["Pullback Zone"]
-    F --> F3["VWAP / Anchored VWAP"]
-    F --> F4["LVN / Breakout Retest"]
+    H --> I["Absorption OR Exhaustion"]
+    I --> J{"Initiation<br/>in intended direction?"}
+    J -->|No| W2["WAIT / REJECT<br/>No confirmed initiation"]
+    J -->|Yes| K{"4. Risk Gate"}
 
-    E1 & E2 & E3 & E4 --> G{"3. Confirmation"}
-    F1 & F2 & F3 & F4 --> H{"3. Confirmation"}
+    K -->|Invalidation unclear| X
+    K -->|Risk unacceptable| X
+    K -->|Risk acceptable| L["EXECUTE"]
 
-    G --> G1["Absorption + Rejection"]
-    G --> G2["Exhaustion + Reclaim"]
-    G --> G3["Sweep + Failed Auction"]
-
-    H --> H1["Initiative Flow + Price Progress"]
-    H --> H2["Passive Defense + Reclaim"]
-    H --> H3["Acceptance + Retest"]
-
-    G1 & G2 & G3 --> I{"Confirmation Valid?"}
-    H1 & H2 & H3 --> I
-
-    I -->|No| X
-    I -->|Yes| J{"4. Risk Gate"}
-
-    J -->|Invalidation unclear| X
-    J -->|Risk unacceptable| X
-    J -->|Risk acceptable| K["EXECUTE"]
-
-    K --> L["Protective Stop"]
-    K --> M["Predefined Exit"]
-    K --> N["Journal + MAE / MFE"]
+    L --> M["Protective Stop"]
+    L --> N["Predefined Exit"]
+    L --> O["Journal + MAE / MFE"]
 
     classDef context fill:#dbeafe,stroke:#2563eb,color:#1e3a8a
     classDef strategy fill:#dcfce7,stroke:#16a34a,color:#14532d
@@ -60,10 +43,17 @@ flowchart TD
 
     class A,B context
     class C,D strategy
-    class E,F,E1,E2,E3,E4,F1,F2,F3,F4 location
-    class G,H,G1,G2,G3,H1,H2,H3,I confirm
-    class X,J,K,L,M,N risk
+    class E,F,G location
+    class H,I,J,W,W2 confirm
+    class X,K,L,M,N,O risk
 ```
+
+## Strategy Matrix / 策略矩阵
+
+| Context | Strategy Thesis | Location | Confirmation |
+| --- | --- | --- | --- |
+| Balance | Mean Reversion | LVN at VAH / VAL | (Absorption OR Exhaustion) + Initiation |
+| Imbalance | Trend Continuation | Trapped Trader Zone (revisit) | (Absorption OR Exhaustion) + Initiation |
 
 ## Decision Rules / 决策规则
 
@@ -80,9 +70,9 @@ flowchart TD
 
 - **Context:** Balance, Imbalance, or Transition/Unclear. Classification requires an explicit timeframe and reproducible rules.
 - **Strategy Thesis:** Mean Reversion is the initial default for Balance; Trend Continuation is the initial default for Imbalance. These are research defaults, not universal laws.
-- **Location:** Pre-identified trading zone. A **Trapped Trader Zone** marks a prior group of unfavorable aggressive entries; the plan waits for a *revisit* and observes the reaction. Its boundaries and formation criteria must be defined before testing.
-- **Trigger vs Confirmation:** A sweep or touch can start observation; rejection, reclaim, acceptance, and other responses can provide confirmation. The event order, thresholds and observation window must be specified for each setup.
-- **Order Flow Evidence:** Absorption, exhaustion, initiative flow and liquidity behavior are context-dependent evidence, not automatic trade instructions.
+- **Location:** Strictly two allowed choices: **Balance → LVN at VAH or VAL**; **Imbalance → Trapped Trader Zone** (wait for price to revisit prior trapped entries). Zone boundaries and identification criteria must be defined before testing.
+- **Confirmation:** Both regimes require **(Absorption OR Exhaustion) AND subsequent Initiation** in the intended trade direction. Here *Initiation* means directional aggressive execution accompanied by price progress; precise thresholds, ordering and observation windows remain to be defined and validated.
+- **Order Flow Evidence:** Absorption and Exhaustion are alternatives for the first condition, not two simultaneous requirements. Neither alone authorizes entry.
 - **Risk:** Protective stop, position size and exit logic are defined before entry. Do not widen risk ad hoc after entry.
 - **Validation:** Record all eligible signals, including skipped trades; study costs, MAE/MFE and out-of-sample net expectancy.
 
